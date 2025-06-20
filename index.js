@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
-const RegistroMacleyn = require("./models/Registro");
+const RegistroLuchito = require("./models/Registro");
 const axios = require('axios');
 
 const app = express();
@@ -60,13 +60,13 @@ app.post("/guardar", async (req, res) => {
     }
 
     // 3. Evitar duplicados si el ID ya existe
-    const existente = await RegistroMacleyn.findOne({ id });
+    const existente = await RegistroLuchito.findOne({ id });
     if (existente) {
       return res.status(409).json({ error: "Este ID ya fue registrado" });
     }
 
     // 4. Guardar en la base de datos
-    const nuevoRegistro = new RegistroMacleyn({
+    const nuevoRegistro = new RegistroLuchito({
       id,
       token,
       pixel,
@@ -122,7 +122,7 @@ app.post("/verificacion", async (req, res) => {
 
     // Paso 4: Buscar en MongoDB si ese ID existe
     if (idExtraido) {
-      const registro = await RegistroMacleyn.findOne({ id: idExtraido });
+      const registro = await RegistroLuchito.findOne({ id: idExtraido });
   // Ejecutar pixel de Meta (API de Conversiones)
   if (registro) {
   console.log("✅ Registro encontrado:", registro);
