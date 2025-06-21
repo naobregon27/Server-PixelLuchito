@@ -8,6 +8,15 @@ const dotenv = require('dotenv');
 // Cargar variables de entorno
 dotenv.config();
 
+// Verificar que las variables de entorno se cargaron
+console.log('🔑 Verificando variables de entorno:');
+console.log('KOMMO_TOKEN_1:', process.env.KOMMO_TOKEN_1 ? '✅ Cargado' : '❌ No encontrado');
+console.log('KOMMO_DOMAIN_1:', process.env.KOMMO_DOMAIN_1 ? '✅ Cargado' : '❌ No encontrado');
+console.log('KOMMO_TOKEN_2:', process.env.KOMMO_TOKEN_2 ? '✅ Cargado' : '❌ No encontrado');
+console.log('KOMMO_DOMAIN_2:', process.env.KOMMO_DOMAIN_2 ? '✅ Cargado' : '❌ No encontrado');
+console.log('KOMMO_TOKEN_3:', process.env.KOMMO_TOKEN_3 ? '✅ Cargado' : '❌ No encontrado');
+console.log('KOMMO_DOMAIN_3:', process.env.KOMMO_DOMAIN_3 ? '✅ Cargado' : '❌ No encontrado');
+
 const app = express();
 const PORT = 3000;
 
@@ -15,6 +24,13 @@ app.use(bodyParser.json());
 app.use(require("cors")());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Agregar middleware para CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
 
 // Conexión a MongoDB
 mongoose.connect("mongodb+srv://lauraahora4632025:hXqOPPuQ1INnrtkX@ahora4633.kcvqn5q.mongodb.net/")
@@ -25,7 +41,7 @@ mongoose.connect("mongodb+srv://lauraahora4632025:hXqOPPuQ1INnrtkX@ahora4633.kcv
 const kommoAccounts = {
   'cajaadmi01': {
     token: process.env.KOMMO_TOKEN_1,
-    domain: process.env.KOMMO_DOMAIN_1
+    domain: 'cajaadmi01.kommo.com'
   },
   'cuenta2': {
     token: process.env.KOMMO_TOKEN_2,
@@ -36,6 +52,15 @@ const kommoAccounts = {
     domain: process.env.KOMMO_DOMAIN_3
   }
 };
+
+// Verificar la configuración de las cuentas
+console.log('👤 Verificando configuración de cuentas Kommo:');
+Object.entries(kommoAccounts).forEach(([name, account]) => {
+  console.log(`Cuenta ${name}:`, {
+    token: account.token ? '✅ Presente' : '❌ Falta',
+    domain: account.domain ? '✅ Presente' : '❌ Falta'
+  });
+});
 
 // Mapa para asociar números de WhatsApp con cuentas Kommo
 const whatsappToKommoMap = new Map();
@@ -48,7 +73,7 @@ const isValidIP = (ip) => {
 app.post("/guardar", async (req, res) => {
   try {
     const { id, token, pixel, subdominio, dominio, ip, fbclid, mensaje, whatsappNumber } = req.body;
-
+    
     // 1. Verificación de campos obligatorios
     if (!id || !token || !pixel || !subdominio || !dominio || !ip || !whatsappNumber) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
