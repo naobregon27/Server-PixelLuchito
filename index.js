@@ -37,19 +37,19 @@ mongoose.connect("mongodb+srv://lauraahora4632025:hXqOPPuQ1INnrtkX@ahora4633.kcv
   .then(() => console.log('✅ Conexión exitosa a MongoDB Atlas'))
   .catch(err => console.error('❌ Error de conexión a MongoDB:', err.message));
 
-// Configuración de cuentas Kommo (solo tokens y dominios)
+// Configuración de cuentas Kommo
 const kommoAccounts = {
   'cajaadmi01': {
     token: process.env.KOMMO_TOKEN_1,
-    domain: 'cajaadmi01.kommo.com'
+    domain: process.env.KOMMO_DOMAIN_1 || 'cajaadmi01.kommo.com'
   },
-  'cuenta2': {
+  'luchito4637': {
     token: process.env.KOMMO_TOKEN_2,
-    domain: process.env.KOMMO_DOMAIN_2
+    domain: process.env.KOMMO_DOMAIN_2 || 'luchito4637.kommo.com'
   },
   'cuenta3': {
     token: process.env.KOMMO_TOKEN_3,
-    domain: process.env.KOMMO_DOMAIN_3
+    domain: process.env.KOMMO_DOMAIN_3 || 'dominio_de_cuenta3.kommo.com'
   }
 };
 
@@ -88,54 +88,77 @@ app.post("/guardar", async (req, res) => {
       return res.status(400).json({ error: "IP no es válida" });
     }
 
-    // 3. Guardar la asociación del número de WhatsApp con la cuenta Kommo
-    // Por defecto usamos la primera cuenta (cajaadmi01)
-    const kommoAccountId = 'cajaadmi01';
-    whatsappToKommoMap.set(whatsappNumber, kommoAccountId);
+    // 3. Determinar la cuenta Kommo basado en el número de WhatsApp
+    let kommoAccountId = null;
+    
+    // Obtener la configuración del número desde el backend
+    try {
+      const configResponse = await axios.post(
+        "https://ahora4633.io/backend/get_config.php",
+        { subdominio }
+      );
 
-    console.log("📱 Número de WhatsApp:", whatsappNumber);
-    console.log("🔗 Asociado a la cuenta Kommo:", kommoAccountId);
-    console.log("🌐 Dominio Kommo:", kommoAccounts[kommoAccountId].domain);
+      if (configResponse.data.error) {
+        console.error("❌ Error al obtener configuración:", configResponse.data.error);
+        return res.status(500).json({ error: "Error al obtener configuración del número" });
+      }
 
-    // 4. Evitar duplicados
-    const existente = await Registro.findOne({ id });
-    if (existente) {
-      return res.status(409).json({ error: "Este ID ya fue registrado" });
+      // La cuenta Kommo debe venir en la configuración
+      kommoAccountId = configResponse.data.kommo_account;
+
+      if (!kommoAccountId || !kommoAccounts[kommoAccountId]) {
+        console.error("❌ Cuenta Kommo no válida:", kommoAccountId);
+        return res.status(400).json({ error: "Cuenta Kommo no válida para este número" });
+      }
+
+      console.log("📱 Número de WhatsApp:", whatsappNumber);
+      console.log("🔗 Asociado a la cuenta Kommo:", kommoAccountId);
+      console.log("🌐 Dominio Kommo:", kommoAccounts[kommoAccountId].domain);
+
+      // 4. Evitar duplicados
+      const existente = await Registro.findOne({ id });
+      if (existente) {
+        return res.status(409).json({ error: "Este ID ya fue registrado" });
+      }
+
+      // 5. Guardar en la base de datos
+      const nuevoRegistro = new Registro({
+        id,
+        token,
+        pixel,
+        subdominio,
+        dominio,
+        ip,
+        fbclid,
+        mensaje,
+        kommoAccount: kommoAccountId,
+        whatsappNumber
+      });
+      await nuevoRegistro.save();
+
+      console.log("✅ Datos guardados exitosamente:", {
+        ID: id,
+        "Número WhatsApp": whatsappNumber,
+        "Cuenta Kommo": kommoAccountId,
+        "Subdominio": subdominio,
+        "IP": ip
+      });
+
+      res.status(201).json({ 
+        mensaje: "Datos guardados con éxito",
+        detalles: {
+          whatsappNumber,
+          kommoAccount: kommoAccountId
+        }
+      });
+
+    } catch (error) {
+      console.error("❌ Error al procesar la configuración:", error);
+      return res.status(500).json({ error: "Error al procesar la configuración" });
     }
 
-    // 5. Guardar en la base de datos
-    const nuevoRegistro = new Registro({
-      id,
-      token,
-      pixel,
-      subdominio,
-      dominio,
-      ip,
-      fbclid,
-      mensaje,
-      kommoAccount: kommoAccountId,
-      whatsappNumber
-    });
-    await nuevoRegistro.save();
-
-    console.log("✅ Datos guardados exitosamente:");
-    console.log({
-      ID: id,
-      "Número WhatsApp": whatsappNumber,
-      "Cuenta Kommo": kommoAccountId,
-      "Subdominio": subdominio,
-      "IP": ip
-    });
-
-    res.status(201).json({ 
-      mensaje: "Datos guardados con éxito",
-      detalles: {
-        whatsappNumber,
-        kommoAccount: kommoAccountId
-      }
-    });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error interno:", err);
     res.status(500).json({ error: "Error interno al guardar los datos" });
   }
 });
@@ -229,7 +252,7 @@ app.post("/verificacion", async (req, res) => {
     if (contacto) {
       console.log("✅ Contacto encontrado:", contacto);
 
-      try {
+  try {
         // Ejecutar pixel de Meta
     const pixelResponse = await axios.post(
       `https://graph.facebook.com/v19.0/${registro.pixel}/events`,
@@ -258,7 +281,7 @@ app.post("/verificacion", async (req, res) => {
     console.log("📡 Pixel ejecutado con éxito:", pixelResponse.data);
   } catch (error) {
     console.error("❌ Error al ejecutar el pixel:", error.response?.data || error.message);
-      }
+  }
     }
 
 res.sendStatus(200);
