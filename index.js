@@ -629,6 +629,7 @@ app.post("/purchase", async (req, res) => {
   }
 
   console.log(`🐛 DEBUG: Procesando evento para lead ID: ${leadId}`);
+// 
 
   try {
     // 2. Obtener el contacto y el ID de la BD desde el mensaje del lead
