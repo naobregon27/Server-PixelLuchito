@@ -659,7 +659,6 @@ app.post("/purchase", async (req, res) => {
         // 4. Buscar el registro en tu BD usando el leadId.
         // Convertimos el leadId a string para la búsqueda si es necesario.
         const idParaBuscar = leadId.toString();
-        console.log("🧾 ID para búsqueda en la BD:", idParaBuscar);
 
         let Modelo;
         if (kommoId === "luchito4637") {
@@ -669,7 +668,7 @@ app.post("/purchase", async (req, res) => {
             return res.status(400).json({ error: "ID de Kommo no autorizado para eventos de compra." });
         }
 
-        const registro = await Modelo.findOne({ id: idParaBuscar });
+        const registro = await Modelo.findOne({ leadId: idParaBuscar });
         console.log("🐛 DEBUG: Buscando registro en la base de datos...");
         if (!registro) {
             console.error("❌ Registro de lead no encontrado en la base de datos.");
