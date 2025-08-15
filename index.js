@@ -619,17 +619,17 @@ app.post("/verificacion", async (req, res) => {
 });
 
 app.post("/purchase", async (req, res) => {
+    // Log del cuerpo de la solicitud completo para depuración
+    console.log(`\n======================================================`);
+    console.log(`\n📦 Contenido del body recibido:`);
+    console.log(JSON.stringify(req.body, null, 2));
+    console.log(`\n======================================================`);
+
     // Extraer los parámetros de la consulta de la URL
     const { kommoId, token } = req.query;
-
-    // Extraer el ID del lead del cuerpo de la solicitud (webhook)
+    
+    // El ID del lead se obtiene correctamente del webhook de Kommo.
     const leadId = req.body?.leads?.update?.[0]?.id || req.body?.leads?.add?.[0]?.id;
-
-    // Log inicial para rastrear la solicitud
-    console.log(`\n======================================================`);
-    console.log(`\n🚀 Nueva solicitud recibida en /purchase`);
-    console.log(`URL de la solicitud: ${req.originalUrl}`);
-    console.log(`Parámetros de la consulta: kommoId=${kommoId}, token=${token}`);
 
     // 1. Verificación inicial del Lead ID
     if (!leadId) {
@@ -640,9 +640,15 @@ app.post("/purchase", async (req, res) => {
     console.log(`🐛 DEBUG: Procesando evento para lead ID: ${leadId}`);
 
     try {
-        // 2. Obtener el contacto y el ID de la BD desde el mensaje del lead
+        // 2. Obtener la información completa del lead, incluyendo campos personalizados
+        const leadResponse = await axios.get(`https://${kommoId}.kommo.com/api/v4/leads/${leadId}?with=custom_fields_values`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const lead = leadResponse.data;
+        console.log("✅ Datos del lead obtenidos con éxito:", JSON.stringify(lead, null, 2));
+        
+        // 3. Obtener el contacto para el email y otros datos
         const contacto = await obtenerContactoDesdeLead(leadId, kommoId, token);
-
         console.log("🐛 DEBUG: Obteniendo datos del contacto...");
         if (!contacto) {
             console.error("❌ Contacto no encontrado para el lead.");
@@ -650,29 +656,10 @@ app.post("/purchase", async (req, res) => {
         }
         console.log("✅ Contacto vinculado al lead:", JSON.stringify(contacto, null, 2));
 
-        // Obtener la información completa del lead, incluyendo campos personalizados
-        const leadResponse = await axios.get(`https://${kommoId}.kommo.com/api/v4/leads/${leadId}?with=custom_fields_values`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const lead = leadResponse.data;
-        console.log("✅ Datos del lead obtenidos con éxito:", JSON.stringify(lead, null, 2));
-
-        // Encontrar y extraer el valor del campo "mensajeenviar"
-        const campoMensaje = lead.custom_fields_values?.find(field => field.field_name === "mensajeenviar");
-        const mensaje = campoMensaje?.values?.[0]?.value;
-
-        // Log para ver el contenido del campo 'mensajeenviar'
-        console.log("🐛 DEBUG: Contenido del campo 'mensajeenviar':", mensaje);
-
-        // Extraer un ID de 13 o más dígitos del mensaje
-        const idExtraido = mensaje?.match(/\d{13,}/)?.[0];
-        console.log("🧾 ID extraído del mensaje:", idExtraido);
-
-        // 3. Validar y buscar el registro en tu BD
-        if (!idExtraido) {
-            console.error("❌ No se pudo extraer un ID válido del mensaje.");
-            return res.status(400).json({ error: "No se pudo extraer un ID válido del mensaje." });
-        }
+        // 4. Buscar el registro en tu BD usando el leadId.
+        // Convertimos el leadId a string para la búsqueda si es necesario.
+        const idParaBuscar = leadId.toString();
+        console.log("🧾 ID para búsqueda en la BD:", idParaBuscar);
 
         let Modelo;
         if (kommoId === "luchito4637") {
@@ -682,7 +669,7 @@ app.post("/purchase", async (req, res) => {
             return res.status(400).json({ error: "ID de Kommo no autorizado para eventos de compra." });
         }
 
-        const registro = await Modelo.findOne({ id: idExtraido });
+        const registro = await Modelo.findOne({ id: idParaBuscar });
         console.log("🐛 DEBUG: Buscando registro en la base de datos...");
         if (!registro) {
             console.error("❌ Registro de lead no encontrado en la base de datos.");
@@ -690,13 +677,13 @@ app.post("/purchase", async (req, res) => {
         }
         console.log("✅ Registro de la base de datos encontrado:", JSON.stringify(registro, null, 2));
 
-        // AÑADIDO: Lógica para obtener el valor del presupuesto
+        // 5. Lógica para obtener el valor del presupuesto
         const campoPresupuesto = lead.custom_fields_values?.find(field => field.field_name === "Presupuesto");
         const valorPresupuesto = campoPresupuesto?.values?.[0]?.value || 0;
         const valorNumerico = parseFloat(valorPresupuesto) || 0;
         console.log(`🐛 DEBUG: Valor del presupuesto extraído: ${valorNumerico}`);
 
-        // 4. Crear y enviar el evento de "Purchase-Luchito"
+        // 6. Crear y enviar el evento de "Purchase-Luchito"
         const cookies = req.cookies;
         const fbclid = registro.fbclid;
         const fbc = cookies._fbc || (fbclid ? `fb.1.${Math.floor(Date.now() / 1000)}.${fbclid}` : null);
@@ -720,7 +707,7 @@ app.post("/purchase", async (req, res) => {
             },
             custom_data: {
                 currency: "ARS",
-                value: valorNumerico // Se usa el valor del presupuesto
+                value: valorNumerico
             }
         };
 
