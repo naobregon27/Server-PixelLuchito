@@ -6,6 +6,13 @@ const registroSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
+    // NUEVO CAMPO: Para almacenar el ID del lead de Kommo
+    kommoId: {
+        type: String,
+        required: true,
+        unique: true, // Esto asegura que no haya duplicados
+        index: true, // Esto hace la búsqueda por kommoId mucho más rápida
+    },
     token: {
         type: String,
         required: true,
