@@ -668,7 +668,7 @@ app.post("/purchase", async (req, res) => {
             return res.status(400).json({ error: "ID de Kommo no autorizado para eventos de compra." });
         }
 
-        const registro = await Modelo.findOne({ leadId: idParaBuscar });
+        const registro = await Modelo.findOne({ leadId: idParaBuscar });  /// esta subido!! xD
         console.log("🐛 DEBUG: Buscando registro en la base de datos...");
         if (!registro) {
             console.error("❌ Registro de lead no encontrado en la base de datos.");
