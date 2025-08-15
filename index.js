@@ -629,7 +629,6 @@ app.post("/purchase", async (req, res) => {
   }
 
   console.log(`🐛 DEBUG: Procesando evento para lead ID: ${leadId}`);
-// 
 
   try {
     // 2. Obtener el contacto y el ID de la BD desde el mensaje del lead
@@ -667,6 +666,11 @@ app.post("/purchase", async (req, res) => {
       return res.status(404).json({ error: "Registro de lead no encontrado en la base de datos." });
     }
 
+    // AÑADIDO: Lógica para obtener el valor del presupuesto
+    const campoPresupuesto = lead.custom_fields_values?.find(field => field.field_name === "Presupuesto");
+    const valorPresupuesto = campoPresupuesto?.values?.[0]?.value || 0;
+    const valorNumerico = parseFloat(valorPresupuesto) || 0;
+
     // 4. Crear y enviar el evento de "Purchase-Luchito"
     const cookies = req.cookies;
     const fbclid = registro.fbclid;
@@ -691,7 +695,7 @@ app.post("/purchase", async (req, res) => {
       },
       custom_data: {
         currency: "ARS",
-        value: 50.00 // Reemplaza con el valor real
+        value: valorNumerico // Se usa el valor del presupuesto
       }
     };
 
