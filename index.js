@@ -689,6 +689,10 @@ app.post("/purchase", async (req, res) => {
         const fbp = cookies._fbp || `fb.1.${Math.floor(Date.now() / 1000)}.${Math.floor(1000000000 + Math.random() * 9000000000)}`;
         const event_id = `purchase_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
 
+        registro.isVerified = true;
+        registro.verificationStatus = 'verificado';
+        await registro.save();
+
         const pixelEndpointUrl = `https://graph.facebook.com/v18.0/${registro.pixel}/events?access_token=${registro.token}`;
 
         const eventData = {
